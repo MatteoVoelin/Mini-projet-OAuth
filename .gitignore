@@ -1,0 +1,10 @@
+# Dossiers de dépendances
+**/node_modules/
+
+# Fichiers d'environnement (Backend & Frontend)
+**/.env
+**/.env.local
+**/.env.development.local
+
+# Divers
+.DS_Store
