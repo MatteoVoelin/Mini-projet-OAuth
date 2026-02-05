@@ -183,7 +183,43 @@ router.get('/users', async (req, res) => {
 // Documentation Passport : https://www.passportjs.org/concepts/authentication/oauth/
 // =============================================================================
 
-// TODO 2: Votre code ici
+// ============================================
+// TODO 2: Routes OAuth Google
+// ============================================
+
+// 1. Route pour initier l'authentification
+router.get('/google', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    session: false // Stateless car on utilise JWT
+  })
+);
+
+// 2. Route de callback après validation Google
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    session: false, 
+    failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed` 
+  }),
+  (req, res) => {
+    try {
+      // L'utilisateur est injecté par Passport dans req.user
+      if (!req.user) {
+        return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_user`);
+      }
+
+      // Génération du JWT avec ta fonction utilitaire
+      const token = generateToken(req.user._id);
+
+      // Redirection vers le frontend avec le token en paramètre de requête
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+      
+    } catch (error) {
+      console.error('Erreur callback Google:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=token_generation_failed`);
+    }
+  }
+);
 
 
 module.exports = router;

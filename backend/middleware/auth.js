@@ -1,55 +1,38 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { findUserById } = require('../models/User'); // Importe la fonction de recherche par ID
 
-// Middleware pour vérifier le JWT
 const authenticateToken = async (req, res, next) => {
   try {
-    // Extraire le token du header Authorization
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer TOKEN"
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
       return res.status(401).json({
         error: 'Access token requis',
-        message: 'Vous devez être connecté pour accéder à cette ressource'
+        message: 'Vous devez être connecté'
       });
     }
 
-    // Vérifier et décoder le token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const db = req.app.locals.db;
 
-    // Récupérer l'utilisateur depuis MongoDB (sans le password)
-    const user = await User.findById(decoded.userId).select('-password');
+    // Récupérer l'utilisateur (on utilise ici l'ID stocké dans le token)
+    // On passe 'db' si on utilise le driver natif comme dans le TODO 1
+    const user = await findUserById(db, decoded.userId);
 
     if (!user) {
       return res.status(404).json({
-        error: 'Utilisateur non trouvé',
-        message: 'Ce compte n\'existe plus'
+        error: 'Utilisateur non trouvé'
       });
     }
 
-    // Ajouter l'utilisateur à la requête
     req.user = user;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        error: 'Token expiré',
-        message: 'Votre session a expiré, veuillez vous reconnecter'
-      });
+      return res.status(401).json({ error: 'Token expiré' });
     }
-
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(403).json({
-        error: 'Token invalide',
-        message: 'Le token fourni est invalide'
-      });
-    }
-
-    res.status(500).json({
-      error: 'Erreur serveur',
-      message: error.message
-    });
+    res.status(403).json({ error: 'Token invalide' });
   }
 };
 
